@@ -102,10 +102,6 @@ def process_request(request):
             depthmap_shape = [int(shape_list[0]), int(shape_list[1])]
         except ValueError:
             return 'Shape format incorrect.'
-        try:
-            radius = int(request.args.get('radius', 20))
-        except ValueError:
-            return 'Radius format incorrect.'
         pattern_shape = request.args.get('pattern_shape', '16,16')
         pattern_shape_list = pattern_shape.split(',')
         if len(pattern_shape_list) != 2:
@@ -126,8 +122,36 @@ def process_request(request):
         if invert.lower() not in ['y', 'n']:
             return 'Invert format incorrect.'
         invert = True if invert.lower() == 'y' else False
-        
-        depthmap = create_circular_depthmap(shape=(depthmap_shape[0], depthmap_shape[1]), radius=radius)
+        picture_shape = request.args.get('picture_shape', 'circle')
+        if picture_shape not in ['circle', 'rectangle', 'triangle']:
+            return 'Picture shape format incorrect.'
+        if picture_shape == 'circle':
+            try:
+                radius = int(request.form.get('radius', 20))
+            except ValueError:
+                return 'Radius format incorrect.'
+            depthmap = create_circular_depthmap(shape=(depthmap_shape[0], depthmap_shape[1]), radius=radius)
+        elif picture_shape == 'rectangle':
+            try:
+                width = int(request.form.get('width', 20))
+            except ValueError:
+                return 'Width format incorrect.'
+            try:
+                height = int(request.form.get('height', 20))
+            except ValueError:
+                return 'Height format incorrect.'
+            depthmap = create_rectangular_depthmap(shape=(depthmap_shape[0], depthmap_shape[1]), width=width, height=height)
+        elif picture_shape == 'triangle':
+            try:
+                base = int(request.form.get('width', 20))
+            except ValueError:
+                return 'Base format incorrect.'
+            try:
+                height = int(request.form.get('height', 20))
+            except ValueError:
+                return 'Height format incorrect.'
+            depthmap = create_triangular_depthmap(shape=(depthmap_shape[0], depthmap_shape[1]), base=base, height=height)
+            
         pattern = make_pattern(shape=(pattern_shape[0], pattern_shape[1]), levels=levels)
         autostereogram = make_autostereogram(depthmap, pattern, shift_amplitude=shift_amplitude, invert=invert)
         
