@@ -15,7 +15,10 @@
 
 node_modules
 #!include:.gitignore
+
 venv/
+
 _main.py
 README.md
 test.py
+autostereogramGenerator.postman_collection.json

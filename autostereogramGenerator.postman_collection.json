@@ -1,0 +1,173 @@
+{
+	"info": {
+		"_postman_id": "1688b0bd-7788-4177-a1ed-92e4cbac20e4",
+		"name": "autostereogramGenerator",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "33998792"
+	},
+	"item": [
+		{
+			"name": "old_get",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://us-central1-reliable-banner-421414.cloudfunctions.net/process_request?shape=300,300&radius=50&pattern_shape=30,30&levels=10&shift_amplitude=0.5&invert=y",
+					"protocol": "https",
+					"host": [
+						"us-central1-reliable-banner-421414",
+						"cloudfunctions",
+						"net"
+					],
+					"path": [
+						"process_request"
+					],
+					"query": [
+						{
+							"key": "shape",
+							"value": "300,300"
+						},
+						{
+							"key": "radius",
+							"value": "50"
+						},
+						{
+							"key": "pattern_shape",
+							"value": "30,30"
+						},
+						{
+							"key": "levels",
+							"value": "10"
+						},
+						{
+							"key": "shift_amplitude",
+							"value": "0.5"
+						},
+						{
+							"key": "invert",
+							"value": "y"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "test_post_circle",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "radius",
+							"value": "50",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://us-central1-reliable-banner-421414.cloudfunctions.net/process_request?shape=300,300&pattern_shape=30,30&levels=20&shift_amplitude=0.5&invert=y&picture_shape=circle",
+					"protocol": "https",
+					"host": [
+						"us-central1-reliable-banner-421414",
+						"cloudfunctions",
+						"net"
+					],
+					"path": [
+						"process_request"
+					],
+					"query": [
+						{
+							"key": "shape",
+							"value": "300,300"
+						},
+						{
+							"key": "pattern_shape",
+							"value": "30,30"
+						},
+						{
+							"key": "levels",
+							"value": "20"
+						},
+						{
+							"key": "shift_amplitude",
+							"value": "0.5"
+						},
+						{
+							"key": "invert",
+							"value": "y"
+						},
+						{
+							"key": "picture_shape",
+							"value": "circle"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "test_post_triangle",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "width",
+							"value": "200",
+							"type": "text"
+						},
+						{
+							"key": "height",
+							"value": "150",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://us-central1-reliable-banner-421414.cloudfunctions.net/process_request?shape=300,300&pattern_shape=30,30&levels=20&shift_amplitude=0.5&invert=y&picture_shape=triangle",
+					"protocol": "https",
+					"host": [
+						"us-central1-reliable-banner-421414",
+						"cloudfunctions",
+						"net"
+					],
+					"path": [
+						"process_request"
+					],
+					"query": [
+						{
+							"key": "shape",
+							"value": "300,300"
+						},
+						{
+							"key": "pattern_shape",
+							"value": "30,30"
+						},
+						{
+							"key": "levels",
+							"value": "20"
+						},
+						{
+							"key": "shift_amplitude",
+							"value": "0.5"
+						},
+						{
+							"key": "invert",
+							"value": "y"
+						},
+						{
+							"key": "picture_shape",
+							"value": "triangle"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
