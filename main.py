@@ -26,7 +26,7 @@ def process_request(request):
     if origin in allowed_origins:
         headers = {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type',
             'Access-Control-Allow-Credentials': 'true'
         }
@@ -34,7 +34,7 @@ def process_request(request):
         # Optionally handle the disallowed origin case
         headers = {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type',
             'Access-Control-Allow-Credentials': 'true'
         }
@@ -93,27 +93,57 @@ def process_request(request):
             download_name='autostereogram.jpeg'
             ), 200, headers
         
+    elif request.method == 'POST':
+        shape = request.args.get('shape', '128,128')
+        shape_list = shape.split(',')
+        if len(shape_list) != 2:
+            return 'Shape format incorrect.'
+        try:
+            depthmap_shape = [int(shape_list[0]), int(shape_list[1])]
+        except ValueError:
+            return 'Shape format incorrect.'
+        try:
+            radius = int(request.args.get('radius', 20))
+        except ValueError:
+            return 'Radius format incorrect.'
+        pattern_shape = request.args.get('pattern_shape', '16,16')
+        pattern_shape_list = pattern_shape.split(',')
+        if len(pattern_shape_list) != 2:
+            return 'Pattern shape format incorrect.'
+        try:
+            pattern_shape = [int(pattern_shape_list[0]), int(pattern_shape_list[1])]
+        except ValueError:
+            return 'Pattern shape format incorrect.'
+        try:
+            levels = int(request.args.get('levels', 5))
+        except ValueError:
+            return 'Levels format incorrect.'
+        try:
+            shift_amplitude = float(request.args.get('shift_amplitude', 0.5))
+        except ValueError:
+            return 'Shift amplitude format incorrect.'
+        invert = request.args.get('invert', 'n')
+        if invert.lower() not in ['y', 'n']:
+            return 'Invert format incorrect.'
+        invert = True if invert.lower() == 'y' else False
+        
+        depthmap = create_circular_depthmap(shape=(depthmap_shape[0], depthmap_shape[1]), radius=radius)
+        pattern = make_pattern(shape=(pattern_shape[0], pattern_shape[1]), levels=levels)
+        autostereogram = make_autostereogram(depthmap, pattern, shift_amplitude=shift_amplitude, invert=invert)
+        
+        buf = io.BytesIO()
+        img = Image.fromarray((autostereogram * 255).astype(np.uint8))
+        img.save(buf, format='JPEG')
+        buf.seek(0)
+        return send_file(
+            buf,
+            mimetype='image/jpeg',
+            as_attachment=True,
+            download_name='autostereogram.jpeg'
+            ), 200, headers
+        
     else:
         return 'Unsupported method', 405
-
-
-# def save_image(img, title=None, colorbar=False):
-#     "Save an image"
-#     plt.figure(figsize=(10, 10))
-#     if len(img.shape) == 2:
-#         i = skimage.io.imshow(img, cmap='gray')
-#     else:
-#         i = skimage.io.imshow(img)
-#     if colorbar:
-#         plt.colorbar(i, shrink=0.5, label='depth')
-#     if title:
-#         plt.title(title)
-#     plt.tight_layout()
-#     datetime_str = datetime.datetime.now().strftime("%Y-%m-%d-%H.%M.%S")
-#     filename = f"image_{datetime_str}.png"
-#     plt.savefig(filename)
-#     print(f"Image saved as {filename}.")
-
 
 def make_pattern(shape=(16, 16), levels=64):
     "Creates a pattern from gray values."
@@ -121,7 +151,7 @@ def make_pattern(shape=(16, 16), levels=64):
     return pattern
 
 
-def create_circular_depthmap(shape=(600, 800), center=None, radius=100):
+def create_circular_depthmap(shape=(600, 800), center=None, radius=100, gradient=False):
     "Creates a circular depthmap, centered on the image."
     depthmap = np.zeros(shape, dtype=float)
     r = np.arange(depthmap.shape[0])
@@ -130,9 +160,38 @@ def create_circular_depthmap(shape=(600, 800), center=None, radius=100):
     if center is None:
         center = np.array([r.max() / 2, c.max() / 2])
     d = np.sqrt((R - center[0])**2 + (C - center[1])**2)
-    depthmap += (d < radius)
+    if gradient:
+        depthmap += 1 - d / radius
+        depthmap = np.clip(depthmap, 0, 1)
+    else:
+        depthmap += (d < radius)
     return depthmap
 
+def create_rectangular_depthmap(shape=(600, 800), center=None, width=200, height=100):
+    "Creates a rectangular depthmap, centered on the image."
+    depthmap = np.zeros(shape, dtype=float)
+    r = np.arange(depthmap.shape[0])
+    c = np.arange(depthmap.shape[1])
+    R, C = np.meshgrid(r, c, indexing='ij')
+    if center is None:
+        center = np.array([r.max() / 2, c.max() / 2])
+    d_x = np.abs(R - center[0])
+    d_y = np.abs(C - center[1])
+    depthmap += (d_x < width/2) & (d_y < height/2)
+    return depthmap
+
+def create_triangular_depthmap(shape=(600, 800), center=None, base=200, height=100):
+    "Creates a triangular depthmap, centered on the image."
+    depthmap = np.zeros(shape, dtype=float)
+    r = np.arange(depthmap.shape[0])
+    c = np.arange(depthmap.shape[1])
+    R, C = np.meshgrid(r, c, indexing='ij')
+    if center is None:
+        center = np.array([r.max() / 2, c.max() / 2])
+    d_x = np.abs(R - center[0])
+    d_y = np.abs(C - center[1])
+    depthmap += (d_x < height/2) & (d_y < base/2) & (d_y < -base/height * d_x + base/2)
+    return depthmap
 
 def normalize(depthmap):
     "Normalizes values of depthmap to [0, 1] range."
@@ -157,6 +216,22 @@ def make_autostereogram(depthmap, pattern, shift_amplitude=0.1, invert=False):
                 autostereogram[r, c] = autostereogram[r, c - pattern.shape[1] + shift]
     return autostereogram
 
+# def save_image(img, title=None, colorbar=False):
+#     "Save an image"
+#     plt.figure(figsize=(10, 10))
+#     if len(img.shape) == 2:
+#         i = skimage.io.imshow(img, cmap='gray')
+#     else:
+#         i = skimage.io.imshow(img)
+#     if colorbar:
+#         plt.colorbar(i, shrink=0.5, label='depth')
+#     if title:
+#         plt.title(title)
+#     plt.tight_layout()
+#     datetime_str = datetime.datetime.now().strftime("%Y-%m-%d-%H.%M.%S")
+#     filename = f"image_{datetime_str}.png"
+#     plt.savefig(filename)
+#     print(f"Image saved as {filename}.")
 
 # if __name__ == "__main__":
 
@@ -233,3 +308,10 @@ def make_autostereogram(depthmap, pattern, shift_amplitude=0.1, invert=False):
 
 #     title = f"Depth map: shape = {depthmap_shape[0]} x {depthmap_shape[1]} , radius = {radius} \n Pattern: shape = {pattern_shape[0]} x {pattern_shape[1]} , levels = {levels} \n Autostereogram: shift amplitude = {shift_amplitude}, invert = {invert}"
 #     save_image(autostereogram, title=title)
+
+
+
+# depthmap = create_rectangular_depthmap()
+# plt.imshow(depthmap, cmap="gray")
+# plt.axis("off")
+# plt.show()
