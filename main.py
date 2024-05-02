@@ -123,7 +123,7 @@ def process_request(request):
             return 'Invert format incorrect.'
         invert = True if invert.lower() == 'y' else False
         picture_shape = request.args.get('picture_shape', 'circle')
-        if picture_shape not in ['circle', 'rectangle', 'triangle']:
+        if picture_shape not in ['circle', 'rectangle', 'triangle', 'diamond', 'star', 'text']:
             return 'Picture shape format incorrect.'
         if picture_shape == 'circle':
             try:
@@ -151,7 +151,23 @@ def process_request(request):
             except ValueError:
                 return 'Height format incorrect.'
             depthmap = create_triangular_depthmap(shape=(depthmap_shape[0], depthmap_shape[1]), base=base, height=height)
-            
+        elif picture_shape == 'diamond':
+            try:
+                width = int(request.form.get('width', 20))
+            except ValueError:
+                return 'Width format incorrect.'
+            try:
+                height = int(request.form.get('height', 20))
+            except ValueError:
+                return 'Height format incorrect.'
+            depthmap = create_diamond_depthmap(shape=(depthmap_shape[0], depthmap_shape[1]), width=width, height=height)
+        else:
+            try:
+                radius = int(request.form.get('radius', 20))
+            except ValueError:
+                return 'Radius format incorrect.'
+            depthmap = create_circular_depthmap(shape=(depthmap_shape[0], depthmap_shape[1]), radius=radius)
+                 
         pattern = make_pattern(shape=(pattern_shape[0], pattern_shape[1]), levels=levels)
         autostereogram = make_autostereogram(depthmap, pattern, shift_amplitude=shift_amplitude, invert=invert)
         
@@ -205,7 +221,20 @@ def create_rectangular_depthmap(shape=(600, 800), center=None, width=200, height
     return depthmap
 
 def create_triangular_depthmap(shape=(600, 800), center=None, base=200, height=100):
-    "Creates a triangular depthmap, centered on the image."
+    "Creates a triangular depthmap, centered on the image, with the tip pointing upward."
+    depthmap = np.zeros(shape, dtype=float)
+    r = np.arange(shape[0])
+    c = np.arange(shape[1])
+    R, C = np.meshgrid(r, c, indexing='ij')
+    if center is None:
+        center = np.array([r.max() / 2, c.max() / 2])
+    d_x = np.abs(C - center[1])
+    d_y = (R - (center[0] + height / 2))
+    mask = (d_y <= 0) & (d_x <= (base / 2) * (1 + d_y / height))
+    depthmap[mask] = 1  # Set depth of the triangle, you can set this to a gradient or any scalar
+    return depthmap
+
+def create_diamond_depthmap(shape=(600, 800), center=None, width=200, height=100):
     depthmap = np.zeros(shape, dtype=float)
     r = np.arange(depthmap.shape[0])
     c = np.arange(depthmap.shape[1])
@@ -214,7 +243,7 @@ def create_triangular_depthmap(shape=(600, 800), center=None, base=200, height=1
         center = np.array([r.max() / 2, c.max() / 2])
     d_x = np.abs(R - center[0])
     d_y = np.abs(C - center[1])
-    depthmap += (d_x < height/2) & (d_y < base/2) & (d_y < -base/height * d_x + base/2)
+    depthmap += (d_x < height/2) & (d_y < width/2) & (d_y < -width/height * d_x + width/2)
     return depthmap
 
 def normalize(depthmap):
