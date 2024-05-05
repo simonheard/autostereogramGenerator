@@ -166,7 +166,11 @@ def process_request(request):
                 text = request.form.get('text', 'HELLO WORLD')
             except ValueError:
                 return 'Text format incorrect.'
-            depthmap = create_text_depthmap(text=text, shape=(depthmap_shape[0], depthmap_shape[1]))
+            try:
+                font_size = int(request.form.get('font_size', 128))
+            except ValueError:
+                return 'Font size format incorrect.'
+            depthmap = create_text_depthmap(text=text, shape=(depthmap_shape[0], depthmap_shape[1]), font_size=font_size)
         else:
             try:
                 radius = int(request.form.get('radius', 20))
