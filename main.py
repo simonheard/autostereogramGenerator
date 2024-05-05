@@ -252,7 +252,7 @@ def create_diamond_depthmap(shape=(600, 800), center=None, width=200, height=100
     depthmap += (d_x < height/2) & (d_y < width/2) & (d_y < -width/height * d_x + width/2)
     return depthmap
 
-def create_text_depthmap(text="HELLO WORLD", shape=(800, 600), font_path='font.ttf', font_size=128):
+def create_text_depthmap(text="HELLO WORLD", shape=(600, 800), font_path='font.ttf', font_size=128):
     # Load font
     try:
         font = ImageFont.truetype(font_path, font_size)
@@ -260,7 +260,7 @@ def create_text_depthmap(text="HELLO WORLD", shape=(800, 600), font_path='font.t
         font = ImageFont.load_default()
 
     # Create image large enough to contain the text
-    temp_image = Image.new('RGB', (1000, 1000))
+    temp_image = Image.new('RGB', (2048, 2048))
     draw = ImageDraw.Draw(temp_image)
 
     # Split text into words and process for line wrapping
@@ -311,7 +311,7 @@ def create_text_depthmap(text="HELLO WORLD", shape=(800, 600), font_path='font.t
 
     # Convert to numpy array and create depth map
     array = np.array(image)
-    return array
+    return array.astype(int)
 
 def normalize(depthmap):
     "Normalizes values of depthmap to [0, 1] range."
