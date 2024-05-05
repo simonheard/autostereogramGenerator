@@ -2,7 +2,6 @@ import datetime
 import logging
 from PIL import Image, ImageDraw, ImageFont
 import io
-import cv2
 from flask import send_file
 import numpy as np
 # import matplotlib.pyplot as plt
@@ -167,15 +166,7 @@ def process_request(request):
                 text = request.form.get('text', 'HELLO WORLD')
             except ValueError:
                 return 'Text format incorrect.'
-            try:
-                width = int(request.form.get('width', 20))
-            except ValueError:
-                return 'Width format incorrect.'
-            try:
-                height = int(request.form.get('height', 20))
-            except ValueError:
-                return 'Height format incorrect.'
-            depthmap = create_text_depthmap(text=text, width=depthmap_shape[0], height=depthmap_shape[1])
+            depthmap = create_text_depthmap(text=text, shape=(depthmap_shape[0], depthmap_shape[1]))
         else:
             try:
                 radius = int(request.form.get('radius', 20))
@@ -261,7 +252,7 @@ def create_diamond_depthmap(shape=(600, 800), center=None, width=200, height=100
     depthmap += (d_x < height/2) & (d_y < width/2) & (d_y < -width/height * d_x + width/2)
     return depthmap
 
-def create_text_depthmap(text="HELLO WORLD", width=600, height=800, font_path='font.ttf', font_size=128):
+def create_text_depthmap(text="HELLO WORLD", shape=(800, 600), font_path='font.ttf', font_size=128):
     # Load font
     try:
         font = ImageFont.truetype(font_path, font_size)
@@ -281,7 +272,7 @@ def create_text_depthmap(text="HELLO WORLD", width=600, height=800, font_path='f
 
     for word in words:
         word_width = draw.textbbox((0, 0), word, font=font)[2] - draw.textbbox((0, 0), '', font=font)[2]
-        if line_width + word_width + space_width <= width:
+        if line_width + word_width + space_width <= shape[0]:
             line.append(word)
             line_width += word_width + space_width
         else:
@@ -300,16 +291,16 @@ def create_text_depthmap(text="HELLO WORLD", width=600, height=800, font_path='f
         text_height += line_height + 10  # Added 10 for padding between lines
         line_heights.append(line_height)
 
-    start_y = (height - text_height) // 2 if height > text_height else 0
+    start_y = (shape[1] - text_height) // 2 if shape[1] > text_height else 0
 
     # Create final image
-    image = Image.new('1', (width, height), 0)
+    image = Image.new('1', (shape[0], shape[1]), 0)
     draw = ImageDraw.Draw(image)
 
     y = start_y
     for i, line in enumerate(lines):
         words = line.split()
-        x = (width - sum(draw.textbbox((0, 0), w, font=font)[2] - draw.textbbox((0, 0), '', font=font)[2] + space_width for w in words[:-1]) - (draw.textbbox((0, 0), words[-1], font=font)[2] - draw.textbbox((0, 0), '', font=font)[2])) // 2
+        x = (shape[0] - sum(draw.textbbox((0, 0), w, font=font)[2] - draw.textbbox((0, 0), '', font=font)[2] + space_width for w in words[:-1]) - (draw.textbbox((0, 0), words[-1], font=font)[2] - draw.textbbox((0, 0), '', font=font)[2])) // 2
         for word in words:
             for char in word:
                 char_width = draw.textbbox((0, 0), char, font=font)[2] - draw.textbbox((0, 0), '', font=font)[2]
