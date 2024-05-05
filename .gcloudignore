@@ -21,4 +21,5 @@ venv/
 _main.py
 README.md
 test.py
+test.ipynb
 autostereogramGenerator.postman_collection.json

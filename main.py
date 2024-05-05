@@ -1,7 +1,8 @@
 import datetime
 import logging
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import io
+import cv2
 from flask import send_file
 import numpy as np
 # import matplotlib.pyplot as plt
@@ -161,6 +162,20 @@ def process_request(request):
             except ValueError:
                 return 'Height format incorrect.'
             depthmap = create_diamond_depthmap(shape=(depthmap_shape[0], depthmap_shape[1]), width=width, height=height)
+        elif picture_shape == 'text':
+            try:
+                text = request.form.get('text', 'HELLO WORLD')
+            except ValueError:
+                return 'Text format incorrect.'
+            try:
+                width = int(request.form.get('width', 20))
+            except ValueError:
+                return 'Width format incorrect.'
+            try:
+                height = int(request.form.get('height', 20))
+            except ValueError:
+                return 'Height format incorrect.'
+            depthmap = create_text_depthmap(text=text, width=depthmap_shape[0], height=depthmap_shape[1])
         else:
             try:
                 radius = int(request.form.get('radius', 20))
@@ -245,6 +260,67 @@ def create_diamond_depthmap(shape=(600, 800), center=None, width=200, height=100
     d_y = np.abs(C - center[1])
     depthmap += (d_x < height/2) & (d_y < width/2) & (d_y < -width/height * d_x + width/2)
     return depthmap
+
+def create_text_depthmap(text="HELLO WORLD", width=600, height=800, font_path='font.ttf', font_size=128):
+    # Load font
+    try:
+        font = ImageFont.truetype(font_path, font_size)
+    except IOError:
+        font = ImageFont.load_default()
+
+    # Create image large enough to contain the text
+    temp_image = Image.new('RGB', (1000, 1000))
+    draw = ImageDraw.Draw(temp_image)
+
+    # Split text into words and process for line wrapping
+    words = text.split()
+    lines = []
+    line = []
+    line_width = 0
+    space_width = draw.textbbox((0, 0), ' ', font=font)[2] - draw.textbbox((0, 0), '', font=font)[2]
+
+    for word in words:
+        word_width = draw.textbbox((0, 0), word, font=font)[2] - draw.textbbox((0, 0), '', font=font)[2]
+        if line_width + word_width + space_width <= width:
+            line.append(word)
+            line_width += word_width + space_width
+        else:
+            lines.append(' '.join(line))
+            line = [word]
+            line_width = word_width + space_width
+    if line:
+        lines.append(' '.join(line))
+
+    # Calculate total text height for vertical centering
+    text_height = 0
+    line_heights = []
+    for line in lines:
+        line_bbox = draw.textbbox((0, 0), line, font=font)
+        line_height = line_bbox[3] - line_bbox[1]
+        text_height += line_height + 10  # Added 10 for padding between lines
+        line_heights.append(line_height)
+
+    start_y = (height - text_height) // 2 if height > text_height else 0
+
+    # Create final image
+    image = Image.new('1', (width, height), 0)
+    draw = ImageDraw.Draw(image)
+
+    y = start_y
+    for i, line in enumerate(lines):
+        words = line.split()
+        x = (width - sum(draw.textbbox((0, 0), w, font=font)[2] - draw.textbbox((0, 0), '', font=font)[2] + space_width for w in words[:-1]) - (draw.textbbox((0, 0), words[-1], font=font)[2] - draw.textbbox((0, 0), '', font=font)[2])) // 2
+        for word in words:
+            for char in word:
+                char_width = draw.textbbox((0, 0), char, font=font)[2] - draw.textbbox((0, 0), '', font=font)[2]
+                draw.text((x, y), char, 1, font=font)
+                x += char_width
+            x += space_width  # add space after each word except the last
+        y += line_heights[i] + 10  # Updated to include padding
+
+    # Convert to numpy array and create depth map
+    array = np.array(image)
+    return array
 
 def normalize(depthmap):
     "Normalizes values of depthmap to [0, 1] range."
